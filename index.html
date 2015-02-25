@@ -1,15 +1,15 @@
 <!doctype html>
 <html>
-	<head>
-		<meta charset="utf-8">
-		<meta http-equiv="X-UA-Compatible" content="chrome=1">
-		<title>Nodejsblogpost by owil</title>
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="chrome=1">
+	<title>Nodejsblogpost by owil</title>
 
-		<link rel="stylesheet" href="stylesheets/styles.css">
-		<link rel="stylesheet" href="stylesheets/pygment_trac.css">
+	<link rel="stylesheet" href="stylesheets/styles.css">
+	<link rel="stylesheet" href="stylesheets/pygment_trac.css">
 
-		<script src="javascripts/scale.fix.js"></script>
-		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+	<script src="javascripts/scale.fix.js"></script>
+	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 		<!--[if lt IE 9]>
 		<script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
@@ -27,11 +27,177 @@
 				<p>The purpose of this blog post is to describe what I learned about NodeJS from watching the <a href="https://www.youtube.com/watch?v=jo_B4LTHi3I">video</a> and reading the <a href="https://www.airpair.com/javascript/node-js-tutorial">article</a> provided for this assignment.</p>
 
 				<h3>Video Notes</h3>
+<p>Should compile NodeJS by source, because it is under development.</p>
+<p>Node is like python; it is a command line item. Built on Google’s javascript. Node is set of libraries on top of it to do networking: doing networking correctly.<br>
+Has global variable; not associated with browser, has process (global variable). Process.en = environment.</p>
 <pre>
+> setTimeout(function() { console.log(“world”);},2000)
+> console.log(“hello”);
+Node is for people familiar with browser-side javascript.
+PHP
+Print(“hello”); -- happened immediately
+Sleep(2); -- Stop
+Echo(“World);
 </pre>
+<p><b>Node does NOT stop.</b> No wait on states, no halting execution; can be idle. Node is good at idling; doesn’t sleep, though.<br>
+<i>Sets itself apart from previous programming languages.</i><br>
+Node ends when there is nothing left to do. Looks for callbacks. Knows there is something to do; only when nothing is to be done, it stops.</p>
+<h4>Can do both client and server side http.</h4>
+<pre>
+> var http = require(‘http’);
+> var s = http.createServer(function(req, res){
+> res.writeHead(200, {‘content-type’: ‘text/plain’});
+> res.end(“hello\n”);
+> setTimeout(function() {
+> res.end(“world\n”);
+> }, 2000);
+> s.listen(8000);
+> });
+
+HTTP/1.1 200 OK
+Content-type: text-plain
+Connection: keep-alive
+Transfer-Encoding: chunked --Node doesn’t force you to give entire body up front.
+</pre>
+<p>Don’t know how big stuff is, don’t want to buffer stuff. When MySQL send stuff, send directly to client.<br>
+Before HTTP 1.1, didn’t have more than one response.<br>
+Server is idle from 2 second timeout; can handle another connection. Doesn’t wait for stuff, so can handle lots of connections; never sleeping; tends to perform better under high concurrency than traditional web server.<br>
+NodeJS can do web servers. Foundation of what you want under web stuff.</p>
+<h4>TCP server: yes.</h4>
+<pre>
+> tcp-server.js
+
+> var net = require(‘net’)
+> net server = net.createServer(function(socket){
+> socket.write(‘hello\n’);
+> socket.write(‘world\n’);
+> socket.on(‘data’, function(data) {
+> socket.write(data);
+> });
+> });
+> server.listen(8000);
+</pre>
+<h4>Write chat server to use on telnet.</h4>
+<pre>
+>chat.js
+
+> net = require(‘net’);
+> var sockets = [];
+> var s = net.Server(function(socket){
+> sockets.push(socket);
+> socket.on(‘data’, function(d){
+> for (var ii = 0; ii<sockets.length; ii++){
+> if (sockets[ii] == socket) continue
+> sockets[ii].write(d);
+> }
+> });
+> socket.on(‘end’, function(){
+> var ii = sockets.indexOf(socket);
+> sockets.splice(ii, 1);
+> });
+> });
+
+> s.listen(8000);
+</pre>
+<p>NodeJS has a Math library</p>
+<p>Under development; debugging is half-done.</p>
+<pre>
+> function foo() {
+> debugger; -- runs debugger
+> return 1+2;
+}
+
+>> node debug hello-world.js
+>> debug> run
+>> debug> backtrace
+>> debug> list
+>> debug> quit
+</pre>
+<p>Can step through code and and stop the running<br>
+Breakpoints (v8, for chrome debugging; separate process)<p>
+
+<p>Node has some debugging options, generally not as fleshed out as other languages.</p>
+<h4>Node can do multiple things at once.</h4>
+<pre>
+> hello-world-server.js
+
+// while true:
+// sleep 5
+// print ‘hello’
+// have to refactor if adding other stuff.
+// or open another thread: one to do new operation and one to do old operation. Thread comes at a cost
+
+> setInterval(function() { console.log(“world”);},5000)
+> console.log(“hello”);
+
+// Node allows you to add to program without changing what is already there.
+> var http = require(‘http’)
+> setInterval(function(){
+> console.log(“fetching google.com”);
+> http.get({host: ‘google.com’}, function(res) {
+> console.log(res.headers);
+> });
+>}), 2000);
+> console.log(“hello”);
+
+// adding web server
+> var s = http.Server(function(req, res){
+> res.writeHead(200);
+> setTimeout(function() {
+> res.end(“hello world\n”);
+> }, 1000);
+> s.listen(8000);
+> });
+</pre>
+<p>NodeJS: don’t know if maintainable in the long run for non-stopping stuff.</p>
+<pre>
+>complaint.js
+
+> function afterDB2(db2res, cb){
+> cb(); //call callback.
+>}
+> function afterDB1(dbres, cb){
+> db2.query(dbres[1], function(db2res){ afterDB2(db2res,cb);
+> });
+> }
+> function afterHttpRequest(res, cb){
+> db.query(res.headers[‘cookie’], function(dbres) {afterDB1(dbres,cb);
+> });
+>}
+
+// exposed
+> function get(cb) {
+> http.get(…,function(res) {afterHttpRequest(res, cb);
+> });
+> }
+</pre>
+<p>Not just calling stuff together. Can abstract and have maintenance on NodeJS, just done differently.</p>
+<h4>Problems of NodeJS:</h4>
+<ul>
+	<li>First problem is <b>immaturity</b>, young platform, from scratch (have to write drivers to connect to stuff)</li>
+	<li>Another problem: code maintainability and debuggability -- problem with event loops; always killing stack; <b>stacks are very short, cannot trace back.</b></li>
+</ul>
+<pre>
+> function foo(){
+> setTimeout(bar, 1000);
+}
+
+> function bar(){
+> console.log(“world”);
+> throw new Error(“hit a problem”);
+> }
+
+> setTimeout(foo, 2000)
+> console.log(“hello”);
+</pre>
+<p><b>Current solution:</b> Use debug mode whenever you set up new event to record stuff.</p>
+<p>Node is share-nothing model. Cannot look at memory of other computers.</p>
+
+<p>Node Package Manager (NPM) -- similar to gems in Ruby.<br>
+Lots of modules.</p>
 				<h3>Node.js Tutorial Article Notes</h3>
-<pre>
-</pre>
+				<p><b>Non-Blocking IO</b> means that NodeJS doesn't make program wait.<br>
+					Instead, NodeJS registers a callback and lets program continue.</p>
 			</section>
 		</div>
 
@@ -41,4 +207,4 @@
 		</footer>
 		<!--[if !IE]><script>fixScale(document);</script><![endif]-->
 	</body>
-</html>
+	</html>
